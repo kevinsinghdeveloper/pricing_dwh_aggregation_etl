@@ -75,6 +75,10 @@ class PricingAggregationETL(DataConnectorBase):
         # read all tables from source
         tables = self.__etl_util.get_all_db_tables()
 
+        Utility.log("Checking source and destination db connections...")
+
+        # check here
+
         Utility.log("Validating source tables...")
 
         if not tables:
@@ -87,6 +91,6 @@ class PricingAggregationETL(DataConnectorBase):
         for table in tables:
             Utility.log(f"Validating table: {table}")
 
-            table_cols = self.__etl_util.get_all_table_columns(table)
+            table_cols = self.__etl_util.get_table_columns(table)
 
             pass
