@@ -1,14 +1,6 @@
-import copy
-
-import pandas as pd
-import re
-
-from pyspark.sql.functions import udf, struct, col, to_date
-from pyspark.sql.types import StringType, StructType, StructField
-from zervedataplatform.abstractions.types.models.LLMProductRequestData import LLMProductRequestData
 from zervedataplatform.connectors.ai.llm_characteristics_extractor import LLMCharacteristicsExtractor
 from zervedataplatform.model_transforms.db.PipelineRunConfig import PipelineRunConfig
-from zervedataplatform.pipeline.Pipeline import DataConnectorBase, FuncDataPipe, FuncPipelineStep
+from zervedataplatform.pipeline.Pipeline import DataConnectorBase, FuncDataPipe
 from zervedataplatform.utils.ETLUtilities import ETLUtilities
 from zervedataplatform.utils.Utility import Utility
 
@@ -25,9 +17,9 @@ class PricingAggregationETL(DataConnectorBase):
 
         pipeline_run_config = PipelineRunConfig(ai_config=default_configs["ai_api_config"],
                                                 run_config=default_configs['run_config'],
-                                                db_config=default_configs['bronze_db_config'],
-                                                dest_db_config=default_configs['silver_db_config'],
-                                                cloud_config=default_configs['cloud_config'],
+                                                db_config=default_configs['silver_db_config'],
+                                                dest_db_config=default_configs['aggregated_db_config'],
+                                                cloud_config=default_configs.get('cloud_config'),
                                                 ID=pipeline_run_id)
 
         self.__pipeline_id = pipeline_run_config.ID

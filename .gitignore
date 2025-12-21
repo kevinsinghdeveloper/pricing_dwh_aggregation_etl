@@ -30,6 +30,9 @@ dist/
 # Log files
 *.log
 
+# Local run scripts
+run_pricing_aggregation_etl.py
+
 # Package files
 *.jar
 
@@ -62,4 +65,3 @@ Thumbs.db
 *.flv
 *.mov
 *.wmv
-
