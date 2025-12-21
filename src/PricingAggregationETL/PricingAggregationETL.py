@@ -134,7 +134,15 @@ class PricingAggregationETL(DataConnectorBase):
             variable_value=table_col_map)
 
     def __move_data_to_destination_db(self):
-        pass
+        source_tables = self.get_pipeline_activity_logger().get_pipeline_variable(
+            task_name=PreValidationPhase.VALIDATE_SOURCE_TABLES,
+            variable_name=PreValidationPhase.PreValidationVariables.SOURCE_TABLES)
+
+        for table in source_tables:
+            Utility.log(f"Moving table: {table}")
+
+            # TODO
+            self.__etl_util.move_table_to_destination_db(table)
 
     def __clean_and_convert_data(self):
         pass
@@ -148,3 +156,8 @@ class PricingAggregationETL(DataConnectorBase):
         # aggregate merchant | category | date
         # merchant | date (level 1) -- add row
         # merchant | category | date (level 2) -- add row
+
+
+        # TODO IMPROVE etl utils
+        # 1. add check db
+        # 2. add move_table_to_destination_db or have to and from. migrate_table(table, config{})
