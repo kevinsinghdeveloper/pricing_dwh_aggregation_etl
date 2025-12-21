@@ -77,6 +77,16 @@ class PricingAggregationETL(DataConnectorBase):
 
         Utility.log("Checking source and destination db connections...")
 
+        # check source
+        # TODO fix this
+        # if not self.__etl_util.check_db_connection():
+        #     Utility.error_log(f"DB connection check failed for source db")
+        #     raise Exception(f"DB connection check failed for source db")
+        #
+        # if not self.__etl_util.check_db_connection(use_dest_db=True):
+        #     Utility.error_log(f"DB connection check failed for destination db")
+        #     raise Exception(f"DB connection check failed for destination db")
+
         # check here
 
         Utility.log("Validating source tables...")
@@ -88,9 +98,26 @@ class PricingAggregationETL(DataConnectorBase):
 
         Utility.log(f"Found tables! {tables}")
 
+        def_cols = list(self.__default_product_pricing_schema_map.keys())
+
+        table_col_map = {}
         for table in tables:
             Utility.log(f"Validating table: {table}")
 
             table_cols = self.__etl_util.get_table_columns(table)
 
-            pass
+            missing_required_cols = set(def_cols) - set(table_cols)
+            if missing_required_cols:
+                Utility.warning_log(f"Table {table} is missing required columns: {missing_required_cols}.")
+
+            table_col_map[table] = {"columns": table_cols}
+
+        if not table_col_map:
+            Utility.error_log(f"Tables not found...")
+            raise Exception("Tables not found...")
+
+        self.get_pipeline_activity_logger().add_pipeline_variable(
+            task_name=PreValidationPhase.VALIDATE_SOURCE_TABLES,
+            variable_name=PreValidationPhase.PreValidationVariables.SOURCE_TABLES,
+            variable_type="dict",
+            variable_value=table_col_map)

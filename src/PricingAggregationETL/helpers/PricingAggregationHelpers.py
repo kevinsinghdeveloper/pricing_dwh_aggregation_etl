@@ -8,3 +8,10 @@ class PricingAggregationETLUtilities(ETLUtilities):
         # override init
         self.__spark_cloud_manager = self._ETLUtilities__spark_source_db_manager
         self.__spark_source_db_manager = self._ETLUtilities__spark_dest_db_manager
+
+    # TODO move to platform tools
+    def check_db_connection(self, use_dest_db=False):
+        db_manager = self.__spark_dest_db_manager if use_dest_db else self.__spark_source_db_manager
+
+        # TODO fix this
+        return db_manager.check_db_status()
