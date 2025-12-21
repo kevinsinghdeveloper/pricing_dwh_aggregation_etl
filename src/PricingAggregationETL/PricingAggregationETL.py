@@ -10,6 +10,16 @@ class PreValidationPhase:
         SOURCE_TABLES = "source_tables"
 
 class PricingAggregationETL(DataConnectorBase):
+    default_hierarchy_level_map = {
+        'market': {
+            "level_num": 0,
+            "agg_dims": ['market', 'priced_date']
+        },
+        'category': {
+            "level_num": 1,
+            "agg_dims": ['market', 'category', 'priced_date']
+        },
+    }
     def __init__(self, name: str, run_datestamp: str, default_configs: dict, pipeline_run_id: str = None):
         super().__init__(name, run_datestamp)
 
@@ -25,6 +35,7 @@ class PricingAggregationETL(DataConnectorBase):
         self.__db_config = pipeline_run_config.db_config
 
         self.__default_product_pricing_schema_map = default_configs.get("default_product_pricing_schema_map")
+        self.default_hierarchy_level_map = default_configs.get("default_hierarchy_level_map", self.default_hierarchy_level_map)
 
         self.__etl_util = PricingAggregationETLUtilities(pipeline_run_config)
         pipeline_log_path = self.__config["pipeline_activity_log_path"]
@@ -121,3 +132,19 @@ class PricingAggregationETL(DataConnectorBase):
             variable_name=PreValidationPhase.PreValidationVariables.SOURCE_TABLES,
             variable_type="dict",
             variable_value=table_col_map)
+
+    def __move_data_to_destination_db(self):
+        pass
+
+    def __clean_and_convert_data(self):
+        pass
+
+    def __aggregate_data_levels(self):
+        pass
+
+        # TODO
+        # read df
+        # convert dates to month
+        # aggregate merchant | category | date
+        # merchant | date (level 1) -- add row
+        # merchant | category | date (level 2) -- add row
