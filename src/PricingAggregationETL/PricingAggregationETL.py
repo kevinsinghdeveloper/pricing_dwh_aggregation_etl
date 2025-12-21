@@ -26,23 +26,7 @@ class PricingAggregationETL(DataConnectorBase):
         self.__config = pipeline_run_config.run_config
         self.__db_config = pipeline_run_config.db_config
 
-        llm_extractor_config = default_configs.get("llm_extractor_config")
-        product_super_category_characteristics_config = default_configs.get("product_super_category_characteristics_config")
         self.__default_product_pricing_schema_map = default_configs.get("default_product_pricing_schema_map")
-
-        self.__llm_extractor = None
-        self.__product_super_category_characteristics_columns = {}
-        if llm_extractor_config and product_super_category_characteristics_config:
-            self.__llm_extractor = LLMCharacteristicsExtractor(llm_extractor_config,
-                                                               product_super_category_characteristics_config,
-                                                               pipeline_run_config.ai_config)
-
-            for super_category_config in product_super_category_characteristics_config:
-                for super_category, config in super_category_config.items():
-                    self.__product_super_category_characteristics_columns[super_category] = config
-
-        else:
-            raise Exception(f"No llm_extractor_config or product_super_category_characteristics_config")
 
         self.__etl_util = ETLUtilities(pipeline_run_config)
         pipeline_log_path = self.__config["pipeline_activity_log_path"]
