@@ -89,16 +89,13 @@ class PricingAggregationETL(DataConnectorBase):
         Utility.log("Checking source and destination db connections...")
 
         # check source
-        # TODO fix this
-        # if not self.__etl_util.check_db_connection():
-        #     Utility.error_log(f"DB connection check failed for source db")
-        #     raise Exception(f"DB connection check failed for source db")
-        #
-        # if not self.__etl_util.check_db_connection(use_dest_db=True):
-        #     Utility.error_log(f"DB connection check failed for destination db")
-        #     raise Exception(f"DB connection check failed for destination db")
+        if not self.__etl_util.check_db_connection():
+            Utility.error_log(f"DB connection check failed for source db")
+            raise Exception(f"DB connection check failed for source db")
 
-        # check here
+        if not self.__etl_util.check_db_connection(use_dest_db=True):
+            Utility.error_log(f"DB connection check failed for destination db")
+            raise Exception(f"DB connection check failed for destination db")
 
         Utility.log("Validating source tables...")
 
