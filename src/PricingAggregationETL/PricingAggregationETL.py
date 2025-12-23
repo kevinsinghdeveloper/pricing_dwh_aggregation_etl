@@ -9,6 +9,10 @@ class PreValidationPhase:
     class PreValidationVariables:
         SOURCE_TABLES = "source_tables"
 
+class SourceReadPhase:
+    MIGRATE_TABLES = "move_tables_to_destination_database"
+
+
 class PricingAggregationETL(DataConnectorBase):
     default_hierarchy_level_map = {
         'market': {
@@ -55,6 +59,13 @@ class PricingAggregationETL(DataConnectorBase):
             FuncPipelineStep(
                 name_of_step=PreValidationPhase.VALIDATE_SOURCE_TABLES,
                 func=self.__validate_source_tables
+            )
+        )
+
+        self._source_read_pipeline.add_to_pipeline(
+            FuncPipelineStep(
+                name_of_step=SourceReadPhase.MIGRATE_TABLES,
+                func=self.__move_data_to_destination_db
             )
         )
 
