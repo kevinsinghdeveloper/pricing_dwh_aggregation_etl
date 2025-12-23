@@ -137,9 +137,9 @@ class PricingAggregationETL(DataConnectorBase):
 
         for table in source_tables:
             Utility.log(f"Moving table: {table}")
-
-            # TODO
             self.__etl_util.move_table(table)
+
+        Utility.log("Tables moved to destination db...")
 
     def __clean_and_convert_data(self):
         pass
