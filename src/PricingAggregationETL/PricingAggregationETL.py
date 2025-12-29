@@ -24,7 +24,7 @@ class PricingAggregationETL(DataConnectorBase):
 
     default_hierarchy_level_map = {
         'market': {
-            "level_num": 0,
+            "level_num": 1,
             "agg_dims": ['merchant', date_col],
             "measure_cols": {
                 'price': {'agg_method':'sum', 'base_measure':'price'},
@@ -32,7 +32,7 @@ class PricingAggregationETL(DataConnectorBase):
             }
         },
         'category': {
-            "level_num": 1,
+            "level_num": 2,
             "agg_dims": ['merchant', 'category', date_col],
             "measure_cols": {
                 'price': {'agg_method':'sum', 'base_measure':'price'},
@@ -216,8 +216,8 @@ class PricingAggregationETL(DataConnectorBase):
             df = self.__etl_util.read_db_table_to_df(table_name=table, use_dest_db=True)
             # perform aggregations
             df = df.withColumns({
-                'hier_level': lit(None),
-                'hier_level_name': lit(None)
+                'hier_level': lit(0),
+                'hier_level_name': lit("item")
             })
 
             # config -> default_hierarchy_level_map
