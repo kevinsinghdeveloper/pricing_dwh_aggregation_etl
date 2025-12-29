@@ -229,7 +229,9 @@ class PricingAggregationETL(DataConnectorBase):
                 agg_dfs.append(agg_df)
 
             # MERGE
-            df = reduce(lambda df1, df2: df1.unionByName(df2), agg_dfs)
+            aggregated_df = reduce(lambda df1, df2: df1.unionByName(df2), agg_dfs)
+
+            df = df.unionByName(aggregated_df, allowMissingColumns=True)
 
             # save df
             Utility.log("Saving table changes...")
