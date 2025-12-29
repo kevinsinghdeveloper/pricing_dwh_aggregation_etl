@@ -1,2 +1,2 @@
 # Core dependency - includes all required packages
-zervedataplatform @ git+https://github.com/kevinsinghdeveloper/zervemedataplatform.git@v0.2.5.3
+zervedataplatform @ git+https://github.com/kevinsinghdeveloper/zervemedataplatform.git@v0.2.5.4
