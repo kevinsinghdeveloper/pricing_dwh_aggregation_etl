@@ -1,4 +1,6 @@
-from pyspark.sql.functions import trunc
+from functools import reduce
+from pyspark.sql import DataFrame
+from pyspark.sql.functions import trunc, lit
 from zervedataplatform.model_transforms.db.PipelineRunConfig import PipelineRunConfig
 from zervedataplatform.pipeline.Pipeline import DataConnectorBase, FuncDataPipe, FuncPipelineStep
 from zervedataplatform.utils.Utility import Utility
@@ -18,18 +20,26 @@ class TransformationPhase:
     GEN_AGGREGATES = "aggregate_tables"
 
 class PricingAggregationETL(DataConnectorBase):
+    date_col = 'priced_date'
+
     default_hierarchy_level_map = {
         'market': {
             "level_num": 0,
-            "agg_dims": ['market', 'priced_date']
+            "agg_dims": ['merchant', date_col],
+            "measure_cols": {
+                'price': {'agg_method':'sum', 'base_measure':'price'},
+                'avg_price': {'agg_method':'avg', 'base_measure':'price'},
+            }
         },
         'category': {
             "level_num": 1,
-            "agg_dims": ['market', 'category', 'priced_date']
+            "agg_dims": ['merchant', 'category', date_col],
+            "measure_cols": {
+                'price': {'agg_method':'sum', 'base_measure':'price'},
+                'avg_price': {'agg_method':'avg', 'base_measure':'price'},
+            }
         },
     }
-
-    date_col = 'priced_date'
     def __init__(self, name: str, run_datestamp: str, default_configs: dict, pipeline_run_id: str = None):
         super().__init__(name, run_datestamp)
 
@@ -205,7 +215,24 @@ class PricingAggregationETL(DataConnectorBase):
 
             df = self.__etl_util.read_db_table_to_df(table_name=table, use_dest_db=True)
             # perform aggregations
+            df = df.withColumns({
+                'hier_level': lit(None),
+                'hier_level_name': lit(None)
+            })
+
+            # config -> default_hierarchy_level_map
+            agg_dfs = []
+            for level, config in self.default_hierarchy_level_map.items():
+                agg_df = PricingAggregationETLUtilities.add_aggregation_level(df=df,
+                                                                          level_config=config,
+                                                                          level_name=level)
+                agg_dfs.append(agg_df)
+
+            # MERGE
+            df = reduce(lambda df1, df2: df1.unionByName(df2), agg_dfs)
 
             # save df
             Utility.log("Saving table changes...")
             self.__etl_util.write_df_to_table(df=df, table_name=table, use_dest_db=True)
+
+
