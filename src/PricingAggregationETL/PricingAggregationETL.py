@@ -174,7 +174,6 @@ class PricingAggregationETL(DataConnectorBase):
 
             df = self.__etl_util.read_db_table_to_df(table_name=table, use_dest_db=True)
             df = df.withColumn(self.date_col, trunc(self.date_col, "month"))
-            df.show()
 
             # TODO additional cleanup simple transforms go here
 
