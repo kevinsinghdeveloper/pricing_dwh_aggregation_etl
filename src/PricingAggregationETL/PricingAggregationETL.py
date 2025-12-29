@@ -1,3 +1,6 @@
+from functools import reduce
+from pyspark.sql import DataFrame
+from pyspark.sql.functions import trunc, lit
 from zervedataplatform.model_transforms.db.PipelineRunConfig import PipelineRunConfig
 from zervedataplatform.pipeline.Pipeline import DataConnectorBase, FuncDataPipe, FuncPipelineStep
 from zervedataplatform.utils.Utility import Utility
@@ -12,16 +15,29 @@ class PreValidationPhase:
 class SourceReadPhase:
     MIGRATE_TABLES = "move_tables_to_destination_database"
 
+class TransformationPhase:
+    TRANSFORM_TABLES = "transform_tables"
+    GEN_AGGREGATES = "aggregate_tables"
 
 class PricingAggregationETL(DataConnectorBase):
+    date_col = 'priced_date'
+
     default_hierarchy_level_map = {
         'market': {
-            "level_num": 0,
-            "agg_dims": ['market', 'priced_date']
+            "level_num": 1,
+            "agg_dims": ['merchant', date_col],
+            "measure_cols": {
+                'price': {'agg_method':'sum', 'base_measure':'price'},
+                'avg_price': {'agg_method':'avg', 'base_measure':'price'},
+            }
         },
         'category': {
-            "level_num": 1,
-            "agg_dims": ['market', 'category', 'priced_date']
+            "level_num": 2,
+            "agg_dims": ['merchant', 'category', date_col],
+            "measure_cols": {
+                'price': {'agg_method':'sum', 'base_measure':'price'},
+                'avg_price': {'agg_method':'avg', 'base_measure':'price'},
+            }
         },
     }
     def __init__(self, name: str, run_datestamp: str, default_configs: dict, pipeline_run_id: str = None):
@@ -66,6 +82,20 @@ class PricingAggregationETL(DataConnectorBase):
             FuncPipelineStep(
                 name_of_step=SourceReadPhase.MIGRATE_TABLES,
                 func=self.__move_data_to_destination_db
+            )
+        )
+
+        self._process_task_pipeline.add_to_pipeline(
+            FuncPipelineStep(
+                name_of_step=TransformationPhase.TRANSFORM_TABLES,
+                func=self.__clean_and_convert_data
+            )
+        )
+
+        self._process_task_pipeline.add_to_pipeline(
+            FuncPipelineStep(
+                name_of_step=TransformationPhase.GEN_AGGREGATES,
+                func=self.__aggregate_data_levels
             )
         )
 
@@ -153,10 +183,26 @@ class PricingAggregationETL(DataConnectorBase):
         Utility.log("Tables moved to destination db...")
 
     def __clean_and_convert_data(self):
-        pass
+        source_tables = self.get_pipeline_activity_logger().get_pipeline_variable(
+            task_name=PreValidationPhase.VALIDATE_SOURCE_TABLES,
+            variable_name=PreValidationPhase.PreValidationVariables.SOURCE_TABLES)
+
+        for table in source_tables:
+            Utility.log(f"Transforming table: {table}")
+
+            df = self.__etl_util.read_db_table_to_df(table_name=table, use_dest_db=True)
+            df = df.withColumn(self.date_col, trunc(self.date_col, "month"))
+
+            # TODO additional cleanup simple transforms go here
+
+            # save df
+            Utility.log("Saving table changes...")
+            self.__etl_util.write_df_to_table(df=df, table_name=table, use_dest_db=True)
 
     def __aggregate_data_levels(self):
-        pass
+        source_tables = self.get_pipeline_activity_logger().get_pipeline_variable(
+            task_name=PreValidationPhase.VALIDATE_SOURCE_TABLES,
+            variable_name=PreValidationPhase.PreValidationVariables.SOURCE_TABLES)
 
         # TODO
         # read df
@@ -164,8 +210,31 @@ class PricingAggregationETL(DataConnectorBase):
         # aggregate merchant | category | date
         # merchant | date (level 1) -- add row
         # merchant | category | date (level 2) -- add row
+        for table in source_tables:
+            Utility.log(f"Transforming table: {table}")
+
+            df = self.__etl_util.read_db_table_to_df(table_name=table, use_dest_db=True)
+            # perform aggregations
+            df = df.withColumns({
+                'hier_level': lit(0),
+                'hier_level_name': lit("item")
+            })
+
+            # config -> default_hierarchy_level_map
+            agg_dfs = []
+            for level, config in self.default_hierarchy_level_map.items():
+                agg_df = PricingAggregationETLUtilities.add_aggregation_level(df=df,
+                                                                          level_config=config,
+                                                                          level_name=level)
+                agg_dfs.append(agg_df)
+
+            # MERGE
+            aggregated_df = reduce(lambda df1, df2: df1.unionByName(df2), agg_dfs)
+
+            df = df.unionByName(aggregated_df, allowMissingColumns=True)
+
+            # save df
+            Utility.log("Saving table changes...")
+            self.__etl_util.write_df_to_table(df=df, table_name=table, use_dest_db=True)
 
 
-        # TODO IMPROVE etl utils
-        # 1. add check db
-        # 2. add move_table_to_destination_db or have to and from. migrate_table(table, config{})
