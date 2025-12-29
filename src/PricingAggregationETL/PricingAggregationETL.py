@@ -15,6 +15,7 @@ class SourceReadPhase:
 
 class TransformationPhase:
     TRANSFORM_TABLES = "transform_tables"
+    GEN_AGGREGATES = "aggregate_tables"
 
 class PricingAggregationETL(DataConnectorBase):
     default_hierarchy_level_map = {
@@ -78,6 +79,13 @@ class PricingAggregationETL(DataConnectorBase):
             FuncPipelineStep(
                 name_of_step=TransformationPhase.TRANSFORM_TABLES,
                 func=self.__clean_and_convert_data
+            )
+        )
+
+        self._process_task_pipeline.add_to_pipeline(
+            FuncPipelineStep(
+                name_of_step=TransformationPhase.GEN_AGGREGATES,
+                func=self.__aggregate_data_levels
             )
         )
 
@@ -182,7 +190,9 @@ class PricingAggregationETL(DataConnectorBase):
             self.__etl_util.write_df_to_table(df=df, table_name=table, use_dest_db=True)
 
     def __aggregate_data_levels(self):
-        pass
+        source_tables = self.get_pipeline_activity_logger().get_pipeline_variable(
+            task_name=PreValidationPhase.VALIDATE_SOURCE_TABLES,
+            variable_name=PreValidationPhase.PreValidationVariables.SOURCE_TABLES)
 
         # TODO
         # read df
@@ -190,8 +200,12 @@ class PricingAggregationETL(DataConnectorBase):
         # aggregate merchant | category | date
         # merchant | date (level 1) -- add row
         # merchant | category | date (level 2) -- add row
+        for table in source_tables:
+            Utility.log(f"Transforming table: {table}")
 
+            df = self.__etl_util.read_db_table_to_df(table_name=table, use_dest_db=True)
+            # perform aggregations
 
-        # TODO IMPROVE etl utils
-        # 1. add check db
-        # 2. add move_table_to_destination_db or have to and from. migrate_table(table, config{})
+            # save df
+            Utility.log("Saving table changes...")
+            self.__etl_util.write_df_to_table(df=df, table_name=table, use_dest_db=True)
