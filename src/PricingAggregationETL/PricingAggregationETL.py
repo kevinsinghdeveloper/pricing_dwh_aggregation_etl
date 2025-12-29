@@ -1,3 +1,4 @@
+from pyspark.sql.functions import trunc
 from zervedataplatform.model_transforms.db.PipelineRunConfig import PipelineRunConfig
 from zervedataplatform.pipeline.Pipeline import DataConnectorBase, FuncDataPipe, FuncPipelineStep
 from zervedataplatform.utils.Utility import Utility
@@ -12,6 +13,8 @@ class PreValidationPhase:
 class SourceReadPhase:
     MIGRATE_TABLES = "move_tables_to_destination_database"
 
+class TransformationPhase:
+    TRANSFORM_TABLES = "transform_tables"
 
 class PricingAggregationETL(DataConnectorBase):
     default_hierarchy_level_map = {
@@ -24,6 +27,8 @@ class PricingAggregationETL(DataConnectorBase):
             "agg_dims": ['market', 'category', 'priced_date']
         },
     }
+
+    date_col = 'priced_date'
     def __init__(self, name: str, run_datestamp: str, default_configs: dict, pipeline_run_id: str = None):
         super().__init__(name, run_datestamp)
 
@@ -66,6 +71,13 @@ class PricingAggregationETL(DataConnectorBase):
             FuncPipelineStep(
                 name_of_step=SourceReadPhase.MIGRATE_TABLES,
                 func=self.__move_data_to_destination_db
+            )
+        )
+
+        self._process_task_pipeline.add_to_pipeline(
+            FuncPipelineStep(
+                name_of_step=TransformationPhase.TRANSFORM_TABLES,
+                func=self.__clean_and_convert_data
             )
         )
 
@@ -153,7 +165,22 @@ class PricingAggregationETL(DataConnectorBase):
         Utility.log("Tables moved to destination db...")
 
     def __clean_and_convert_data(self):
-        pass
+        source_tables = self.get_pipeline_activity_logger().get_pipeline_variable(
+            task_name=PreValidationPhase.VALIDATE_SOURCE_TABLES,
+            variable_name=PreValidationPhase.PreValidationVariables.SOURCE_TABLES)
+
+        for table in source_tables:
+            Utility.log(f"Transforming table: {table}")
+
+            df = self.__etl_util.read_db_table_to_df(table_name=table, use_dest_db=True)
+            df = df.withColumn(self.date_col, trunc(self.date_col, "month"))
+            df.show()
+
+            # TODO additional cleanup simple transforms go here
+
+            # save df
+            Utility.log("Saving table changes...")
+            self.__etl_util.write_df_to_table(df=df, table_name=table, use_dest_db=True)
 
     def __aggregate_data_levels(self):
         pass
